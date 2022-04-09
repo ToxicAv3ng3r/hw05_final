@@ -231,12 +231,12 @@ class PostViewsTest(TestCase):
                             data=form_data, follow=True))
         response_follower = (self.authorized_client.get
                              (reverse('posts:follow_index')))
-        post_obj = response_follower.context['posts'][0]
+        post_obj = response_follower.context['page_obj'][0]
         self.assertEqual(response_create.status_code, HTTPStatus.OK)
         self.assertEqual(post_obj.text, form_data['text'])
         response_not_follower = (self.authorized_client_2.get
                                  (reverse('posts:follow_index')))
-        self.assertEqual(len(response_not_follower.context['posts']), 0)
+        self.assertEqual(len(response_not_follower.context['page_obj']), 0)
 
 
 class PaginatorViewsTest(TestCase):
