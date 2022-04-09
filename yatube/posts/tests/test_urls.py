@@ -43,14 +43,20 @@ class PostURLTest(TestCase):
 
     def test_urls_uses_correct_template(self):
         """Проверяем, что в posts используеются верные шаблоны"""
-        post_id = PostURLTest.post.id
-        slug = PostURLTest.group.slug
-        username = self.user
         urls = {
             reverse('posts:main_page'): 'posts/index.html',
-            reverse('posts:group_list_page', kwargs={'slug': self.group.slug}): 'posts/group_list.html',
-            reverse('posts:profile', kwargs={'username': self.user.username}): 'posts/profile.html',
-            reverse('posts:post_detail', kwargs={'post_id': self.post.id}): 'posts/post_detail.html',
+            reverse('posts:group_list_page',
+                    kwargs={
+                        'slug': self.group.slug
+                    }): 'posts/group_list.html',
+            reverse('posts:profile',
+                    kwargs={
+                        'username': self.user.username
+                    }): 'posts/profile.html',
+            reverse('posts:post_detail',
+                    kwargs={
+                        'post_id': self.post.id
+                    }): 'posts/post_detail.html',
         }
 
         for adress, template in urls.items():
