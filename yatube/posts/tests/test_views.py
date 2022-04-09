@@ -177,7 +177,8 @@ class PostViewsTest(TestCase):
             author=self.user,
             text='New post'
         )
-        response_after_create = self.authorized_client.get(reverse('posts:main_page'))
+        response_after_create = (self.authorized_client.get
+                                 (reverse('posts:main_page')))
         self.assertEqual(page_content, response_after_create.content)
 
     def test_another_group(self):
