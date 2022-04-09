@@ -113,9 +113,8 @@ def add_comment(request, post_id):
 def follow_index(request):
     user = request.user
     posts = Post.objects.filter(author__following__user=user)
-    context = {
-        'posts': posts,
-    }
+    context = {}
+    context.update(paginator(posts, request))
     return render(request, 'posts/follow.html', context)
 
 
@@ -123,7 +122,9 @@ def follow_index(request):
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     follower = request.user
-    Follow.objects.create(user=follower, author=author)
+    if request.user == author:
+        return redirect('posts:profile', username=username)
+    Follow.objects.get_or_create(user=follower, author=author)
     return redirect('posts:profile', username=username)
 
 
