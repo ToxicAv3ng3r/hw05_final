@@ -4,7 +4,7 @@
 {% endblock %}
 {% block content %}
 {% load cache %}
-{% cache 20 follow_page %}
+{% cache 20 follow_page request.user.username %}
   <div class="container py-5">
     {% include 'posts/includes/switcher.html' %}
     {{ posts_count }}

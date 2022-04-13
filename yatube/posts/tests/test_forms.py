@@ -3,6 +3,7 @@ import tempfile
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files import File
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.conf import settings
@@ -38,12 +39,6 @@ class PostFormsTest(TestCase):
             author=cls.user,
             group=cls.group
         )
-        cls.form = PostForm()
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self) -> None:
         self.guest_client = Client()
@@ -51,6 +46,11 @@ class PostFormsTest(TestCase):
         self.authorized_client_non_author.force_login(self.user_non_author)
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_create_post_with_image(self):
         """Проверка, что пост создается с картинкой"""
@@ -64,7 +64,7 @@ class PostFormsTest(TestCase):
             b'\x0A\x00\x3B'
         )
         uploaded = SimpleUploadedFile(
-            name='small.gif',
+            name='smal1.gif',
             content=small_gif,
             content_type='image/gif'
 
@@ -74,6 +74,7 @@ class PostFormsTest(TestCase):
             'group': self.group.id,
             'image': uploaded
         }
+
         response = self.authorized_client.post(reverse('posts:post_create'),
                                                data=form_data,
                                                follow=True)
@@ -87,6 +88,8 @@ class PostFormsTest(TestCase):
         self.assertEqual(last_post.group, self.group)
         self.assertEqual(last_post.text,
                          form_data['text'])
+        self.assertEqual(last_post.image.name,
+                         'posts/' + form_data['image'].name)
 
     def test_create_post_without_image(self):
         """Проверка, что пост создается без картинки"""
@@ -108,6 +111,7 @@ class PostFormsTest(TestCase):
         self.assertEqual(last_post.group, self.group)
         self.assertEqual(last_post.text,
                          form_data['text'])
+        self.assertFalse(last_post.image)
 
     def test_non_auth_user_cant_edit_post(self):
         """Неавторизованный юзер не отредактирует пост"""
@@ -267,7 +271,6 @@ class CommentFormTest(TestCase):
             text='Test text',
             author=cls.user
         )
-        cls.form = CommentForm()
 
     def setUp(self) -> None:
         self.guest_client = Client()

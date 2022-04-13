@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}
-  Новый пост
+  {% if not is_edit %}
+      Новый пост
+  {% else %}
+      Редактировать пост
+  {% endif %}
 {% endblock %}
 {% block content %}
 {% load user_filters %}

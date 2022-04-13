@@ -3,13 +3,17 @@ import tempfile
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from django.test import TestCase, Client, override_settings
+from django.core.cache import cache
+from django import forms
 from django.urls import reverse
 from django.conf import settings
 
 from http import HTTPStatus
 
 from ..models import Group, Post, Comment, Follow
+from ..forms import CommentForm
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 User = get_user_model()
@@ -165,8 +169,13 @@ class PostViewsTest(TestCase):
         comment_object = response.context['comments'][0]
         comment_author = comment_object.author
         comment_text = comment_object.text
+        comment_form = response.context.get('form')
+        form_field = comment_form.fields.get('text')
+        self.assertIsNotNone(comment_form)
+        self.assertIsInstance(form_field, forms.fields.CharField)
         self.assertEqual(comment_author, self.comment.author)
         self.assertEqual(comment_text, self.comment.text)
+
 
     def test_cache_main_page(self):
         """Проверка кэширования главной страницы"""
@@ -180,6 +189,12 @@ class PostViewsTest(TestCase):
         response_after_create = (self.authorized_client.get
                                  (reverse('posts:main_page')))
         self.assertEqual(page_content, response_after_create.content)
+        cache.clear()
+        response_after_clear = (self.authorized_client.get
+                                (reverse('posts:main_page')))
+        new_post_obj = response_after_clear.context['page_obj'][0]
+        self.assertEqual(new_post_obj.text, Post.objects.latest('pk').text)
+
 
     def test_another_group(self):
         """Пост отображается на нужных страницах
@@ -219,6 +234,29 @@ class PostViewsTest(TestCase):
                 'username': self.user3.username}))
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertEqual(Follow.objects.count(), follows_count - 1)
+
+    def test_follow_yourself(self):
+        """Юзер не может подписаться на самого себя"""
+        follows_count = Follow.objects.count()
+        response = self.authorized_client.get(
+            reverse('posts:profile_follow',
+                    kwargs={'username': self.user.username}))
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+        self.assertEqual(Follow.objects.count(), follows_count)
+        self.assertRedirects(response, f'/profile/{self.user.username}/')
+        user = self.user
+        constraint_name = 'twice_follow_constraint'
+        with self.assertRaisesMessage(IntegrityError, constraint_name):
+            Follow.objects.create(user=user, author=user)
+
+    def test_follow_twice(self):
+        """Юзер не может подписаться дважды на одного автора"""
+        follows_count = Follow.objects.count()
+        response = self.authorized_client.get(
+            reverse('posts:profile_follow',
+                    kwargs={'username': self.user3.username}))
+        self.assertEqual(Follow.objects.count(), follows_count)
+        self.assertRedirects(response, f'/profile/{self.user3.username}/')
 
     def test_follower_lent_update(self):
         """Новый пост появляется у подписчика в ленте

@@ -37,14 +37,11 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     posts = author.posts.select_related('author', 'group').all()
     user = request.user
-    following = False
-    if user.is_authenticated:
-        follow = Follow.objects.filter(user=user, author=author).exists()
-        following = follow
+    following = (user.is_authenticated and
+                 Follow.objects.filter(user=user, author=author).exists())
 
     context = {
         'author': author,
-        'posts': posts,
         'following': following
     }
     context.update(paginator(posts, request))
@@ -67,7 +64,7 @@ def post_detail(request, post_id):
 
 @login_required
 def post_create(request):
-    form = PostForm(request.POST or None)
+    form = PostForm(request.POST or None, files=request.FILES or None)
     if form.is_valid():
         post = form.save(commit=False)
         post.author = request.user
@@ -113,8 +110,7 @@ def add_comment(request, post_id):
 def follow_index(request):
     user = request.user
     posts = Post.objects.filter(author__following__user=user)
-    context = {}
-    context.update(paginator(posts, request))
+    context = paginator(posts, request)
     return render(request, 'posts/follow.html', context)
 
 
@@ -131,6 +127,5 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    follower = request.user
-    Follow.objects.get(user=follower, author=author).delete()
+    Follow.objects.filter(user=request.user, author=author).delete()
     return redirect('posts:profile', username=username)

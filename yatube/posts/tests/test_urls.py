@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from http import HTTPStatus
 
-from ..models import Group, Post, User
+from ..models import Group, Post, User, Comment, Follow
 
 
 class StaticURLTests(TestCase):
@@ -31,6 +31,11 @@ class PostURLTest(TestCase):
             author=cls.user,
             text='Тестовый текст'
         )
+        cls.comment = Comment.objects.create(
+            post=cls.post,
+            author=cls.user,
+            text='Test comment text'
+        )
 
     def setUp(self) -> None:
         self.guest_client = Client()
@@ -57,11 +62,12 @@ class PostURLTest(TestCase):
                     kwargs={
                         'post_id': self.post.id
                     }): 'posts/post_detail.html',
+            reverse('posts:follow_index'): 'posts/follow.html',
         }
 
         for adress, template in urls.items():
             with self.subTest(template=template):
-                response = self.guest_client.get(adress)
+                response = self.authorized_client.get(adress)
                 self.assertTemplateUsed(response, template)
 
     def test_auth_only(self):
@@ -89,6 +95,39 @@ class PostURLTest(TestCase):
                 response = self.guest_client.get(adress)
                 self.assertRedirects(response, redir_adress)
 
+    def test_anonimus_comment_redir(self):
+        """Анонимный юзер не напишет комментарий"""
+        post_id = self.post.id
+        form_data = {
+            'text': 'Test comment text'
+        }
+        response = self.guest_client.post(reverse(
+            'posts:add_comment',
+            kwargs={'post_id': post_id}), data=form_data, follow=True)
+        self.assertRedirects(
+            response, f'/auth/login/?next=/posts/{post_id}/comment/')
+
+    def test_anonimus_cant_follow(self):
+        """Аноним не сможет создать подписку"""
+        username = self.user.username
+        response = self.guest_client.get(
+            reverse('posts:profile_follow',
+                    kwargs={'username': username}))
+        self.assertRedirects(
+            response, f'/auth/login/?next=/profile/{username}/follow/')
+
+    def test_follow_availible(self):
+        """Система подписки доступна"""
+        username = self.user.username
+        urls = [
+            reverse('posts:profile_follow', kwargs={'username': username}),
+            reverse('posts:profile_unfollow', kwargs={'username': username})
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.authorized_client_non_author.get(url)
+                self.assertEqual(response.status_code, HTTPStatus.FOUND)
+
     def test_author_edit_only(self):
         """Не автора должно перекинуть на детали поста"""
         post_id = PostURLTest.post.id
@@ -108,6 +147,7 @@ class PostURLTest(TestCase):
             f'/posts/{post_id}/': HTTPStatus.OK,
             f'/posts/{post_id}/edit/': HTTPStatus.OK,
             '/create/': HTTPStatus.OK,
+            '/follow/': HTTPStatus.OK,
             '/unexisting_page/': HTTPStatus.NOT_FOUND
         }
         for adress, status_code in urls_status.items():

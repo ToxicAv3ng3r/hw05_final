@@ -29,6 +29,7 @@ class Post(models.Model):
     )
     image = models.ImageField(
         verbose_name='Картинка',
+        help_text='Картинка',
         upload_to='posts/',
         blank=True
     )
@@ -84,6 +85,9 @@ class Comment(models.Model):
         verbose_name = 'Комментарий',
         verbose_name_plural = 'Комментарии'
 
+    def __str__(self):
+        return self.text[:settings.SYMBOLS_IN_STR]
+
 
 class Follow(models.Model):
     user = models.ForeignKey(
@@ -98,3 +102,15 @@ class Follow(models.Model):
         related_name='following',
         verbose_name='Автор',
     )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'],
+                name='unique_follow'),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F("author")),
+                name='twice_follow_constraint')
+        ]
