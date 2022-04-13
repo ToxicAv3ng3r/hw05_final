@@ -13,7 +13,6 @@ from django.conf import settings
 from http import HTTPStatus
 
 from ..models import Group, Post, Comment, Follow
-from ..forms import CommentForm
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 User = get_user_model()
@@ -176,7 +175,6 @@ class PostViewsTest(TestCase):
         self.assertEqual(comment_author, self.comment.author)
         self.assertEqual(comment_text, self.comment.text)
 
-
     def test_cache_main_page(self):
         """Проверка кэширования главной страницы"""
         response_before_create = self.authorized_client.get(reverse(
@@ -194,7 +192,6 @@ class PostViewsTest(TestCase):
                                 (reverse('posts:main_page')))
         new_post_obj = response_after_clear.context['page_obj'][0]
         self.assertEqual(new_post_obj.text, Post.objects.latest('pk').text)
-
 
     def test_another_group(self):
         """Пост отображается на нужных страницах

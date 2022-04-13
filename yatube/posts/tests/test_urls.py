@@ -109,12 +109,14 @@ class PostURLTest(TestCase):
 
     def test_anonimus_cant_follow(self):
         """Аноним не сможет создать подписку"""
+        follows_count = Follow.objects.count()
         username = self.user.username
         response = self.guest_client.get(
             reverse('posts:profile_follow',
                     kwargs={'username': username}))
         self.assertRedirects(
             response, f'/auth/login/?next=/profile/{username}/follow/')
+        self.assertEqual(Follow.objects.count(), follows_count)
 
     def test_follow_availible(self):
         """Система подписки доступна"""
